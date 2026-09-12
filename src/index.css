@@ -1,0 +1,25 @@
+:root {
+  --navy: #0c2154;
+  --navy-2: #14306e;
+  --red: #e11d2e;
+  --gold: #c9a227;
+  --ink: #12203a;
+  --paper: #f7f4ee;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: Nunito, system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button, input, select, textarea { font-family: inherit; }
+
+img { max-width: 100%; display: block; }
