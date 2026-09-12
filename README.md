@@ -20,7 +20,7 @@ npm run preview
 
 ## Enquiry form
 
-The contact form sends Parent name, Student name, Class, Location, Subjects, Timing, and Enquiry to WhatsApp: 7388100619 (Pawan Gupta).
+The contact form sends Parent name, Student name, Class, Location, Subjects, Timing, and Enquiry to WhatsApp:    Pawan Gupta 
 =======
 # vidya-course
 >>>>>>> d19510aa247b947a011b15644006e741714d5029
