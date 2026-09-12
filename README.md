@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Vidya Course — Home Tuition Website
 
 Hindi / English home tuition for Class 1–6. Shakarpur, Laxmi Nagar.
