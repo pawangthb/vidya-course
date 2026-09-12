@@ -1,18 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from 'firebase/auth'
+import { useState, useEffect } from 'react'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from './firebase'
 
-const SITE_URL = 'http://localhost:5173' // change to your deployed URL after deployment
+const SITE_URL = 'http://localhost:5173' // change after deployment
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; background: #F5F6FA; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  body { font-family: 'Inter', sans-serif; background: #F5F6FA; min-height: 100vh; }
   .login-root { display: flex; min-height: 100vh; width: 100%; }
   .login-brand { display: none; flex: 1; background: #1B2A6B; flex-direction: column; justify-content: center; align-items: flex-start; padding: 64px 56px; position: relative; overflow: hidden; }
   @media (min-width: 900px) { .login-brand { display: flex; } }
@@ -27,95 +22,47 @@ const STYLES = `
   .login-form-panel { flex: 0 0 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px 24px; background: #fff; }
   @media (min-width: 900px) { .login-form-panel { flex: 0 0 440px; padding: 64px 48px; } }
   .form-box { width: 100%; max-width: 360px; }
-  .form-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
-  .form-logo-icon { width: 36px; height: 36px; background: #E3001B; color: #fff; font-size: 1.1rem; font-weight: 800; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-  .form-logo-text { font-size: 1.1rem; font-weight: 700; color: #1B2A6B; }
-  .form-heading { font-size: 1.55rem; font-weight: 700; color: #111827; letter-spacing: -0.02em; margin-bottom: 6px; }
-  .form-sub { font-size: 0.9rem; color: #6B7280; margin-bottom: 28px; line-height: 1.5; }
-  .tabs { display: flex; background: #F5F6FA; border-radius: 10px; padding: 4px; margin-bottom: 24px; gap: 4px; }
-  .tab { flex: 1; padding: 9px 0; font-size: 0.875rem; font-weight: 500; border: none; background: transparent; border-radius: 7px; cursor: pointer; color: #6B7280; transition: background 0.15s, color 0.15s; font-family: inherit; }
-  .tab.active { background: #fff; color: #1B2A6B; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  .btn-google { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 11px 16px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: #fff; font-size: 0.9rem; font-weight: 500; color: #111827; cursor: pointer; transition: border-color 0.15s, background 0.15s; font-family: inherit; }
-  .btn-google:hover:not(:disabled) { border-color: #1B2A6B; background: #F5F6FA; }
+  .form-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
+  .form-logo-icon { width: 40px; height: 40px; background: #E3001B; color: #fff; font-size: 1.2rem; font-weight: 800; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .form-logo-text { font-size: 1.2rem; font-weight: 700; color: #1B2A6B; }
+  .form-heading { font-size: 1.75rem; font-weight: 700; color: #111827; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .form-sub { font-size: 0.9rem; color: #6B7280; margin-bottom: 36px; line-height: 1.5; }
+  .btn-google { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 16px; border: 1.5px solid #E5E7EB; border-radius: 10px; background: #fff; font-size: 0.95rem; font-weight: 500; color: #111827; cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; font-family: inherit; }
+  .btn-google:hover:not(:disabled) { border-color: #1B2A6B; background: #F5F6FA; box-shadow: 0 2px 8px rgba(27,42,107,0.08); }
   .btn-google:disabled { opacity: 0.6; cursor: not-allowed; }
-  .google-icon { width: 18px; height: 18px; flex-shrink: 0; }
-  .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: #9CA3AF; font-size: 0.8rem; }
+  .google-icon { width: 20px; height: 20px; flex-shrink: 0; }
+  .err { color: #E3001B; font-size: 0.85rem; margin-top: 12px; text-align: center; }
+  .divider { display: flex; align-items: center; gap: 12px; margin: 28px 0; color: #9CA3AF; font-size: 0.8rem; }
   .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #E5E7EB; }
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 0.825rem; font-weight: 500; color: #374151; margin-bottom: 5px; }
-  .field-row { display: flex; gap: 8px; }
-  .field input { width: 100%; padding: 10px 13px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 0.9rem; color: #111827; outline: none; transition: border-color 0.15s; font-family: inherit; }
-  .field input:focus { border-color: #1B2A6B; }
-  .field input.error-input { border-color: #E3001B; }
-  .field-prefix { display: flex; align-items: center; padding: 10px 13px; background: #F5F6FA; border: 1.5px solid #E5E7EB; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.9rem; color: #6B7280; white-space: nowrap; }
-  .field input.with-prefix { border-radius: 0 8px 8px 0; }
-  .otp-boxes { display: flex; gap: 8px; margin-top: 4px; }
-  .otp-box { flex: 1; padding: 12px 0; text-align: center; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 1.2rem; font-weight: 600; color: #1B2A6B; outline: none; transition: border-color 0.15s; font-family: inherit; }
-  .otp-box:focus { border-color: #1B2A6B; }
-  .btn-send-otp { padding: 10px 14px; background: #1B2A6B; color: #fff; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; font-family: inherit; }
-  .btn-send-otp:hover:not(:disabled) { background: #14206b; }
-  .btn-send-otp:disabled { background: #9CA3AF; cursor: not-allowed; }
-  .btn-primary { width: 100%; padding: 12px; background: #E3001B; color: #fff; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 6px; transition: background 0.15s; font-family: inherit; }
-  .btn-primary:hover:not(:disabled) { background: #c40017; }
-  .btn-primary:disabled { background: #FCA5A5; cursor: not-allowed; }
-  .err { color: #E3001B; font-size: 0.8rem; margin-top: 6px; }
-  .info { color: #6B7280; font-size: 0.8rem; margin-top: 6px; line-height: 1.5; }
-  .success-box { text-align: center; padding: 12px 0; }
-  .success-icon { font-size: 3rem; margin-bottom: 14px; }
-  .success-box h3 { font-size: 1.2rem; font-weight: 700; color: #111827; margin-bottom: 8px; }
-  .success-box p { font-size: 0.875rem; color: #6B7280; line-height: 1.6; margin-bottom: 20px; }
-  .redirect-bar { height: 4px; background: #E5E7EB; border-radius: 2px; overflow: hidden; margin-bottom: 14px; }
-  .redirect-fill { height: 100%; background: #E3001B; border-radius: 2px; transition: width 0.25s linear; }
+  .features { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .feature { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: #6B7280; }
+  .feature-icon { width: 28px; height: 28px; background: #F5F6FA; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+  .success-box { text-align: center; padding: 20px 0; }
+  .success-icon { font-size: 3.5rem; margin-bottom: 16px; }
+  .success-box h3 { font-size: 1.3rem; font-weight: 700; color: #111827; margin-bottom: 8px; }
+  .success-box p { font-size: 0.875rem; color: #6B7280; line-height: 1.6; margin-bottom: 24px; }
+  .redirect-bar { height: 5px; background: #E5E7EB; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+  .redirect-fill { height: 100%; background: #E3001B; border-radius: 3px; transition: width 0.25s linear; }
   .redirect-label { font-size: 0.8rem; color: #9CA3AF; }
-  .footer-note { margin-top: 28px; font-size: 0.78rem; color: #9CA3AF; text-align: center; line-height: 1.5; }
-  #recaptcha-container { margin-top: 8px; }
+  .footer-note { margin-top: 36px; font-size: 0.75rem; color: #9CA3AF; text-align: center; line-height: 1.6; }
 `
 
 export default function Login() {
-  const [tab, setTab] = useState('google')
-  const [phone, setPhone] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
-  const [countdown, setCountdown] = useState(0)
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [progress, setProgress] = useState(0)
   const [userName, setUserName] = useState('')
-  const confirmationRef = useRef(null)
-  const otpRefs = useRef([])
-  const timerRef = useRef(null)
-  const recaptchaRef = useRef(null)
-
-  useEffect(() => {
-    if (countdown <= 0) return
-    timerRef.current = setTimeout(() => setCountdown(c => c - 1), 1000)
-    return () => clearTimeout(timerRef.current)
-  }, [countdown])
 
   useEffect(() => {
     if (!success) return
     let p = 0
     const iv = setInterval(() => {
-      p += 2
-      setProgress(p)
+      p += 2; setProgress(p)
       if (p >= 100) { clearInterval(iv); window.location.href = SITE_URL }
     }, 100)
     return () => clearInterval(iv)
   }, [success])
-
-  async function setupRecaptcha() {
-    if (recaptchaRef.current) {
-      try { await recaptchaRef.current.render() } catch {}
-      return
-    }
-    recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-      callback: () => {},
-      'error-callback': () => { recaptchaRef.current = null },
-    })
-    await recaptchaRef.current.render()
-  }
 
   async function handleGoogleLogin() {
     setErr(''); setLoading(true)
@@ -125,73 +72,28 @@ export default function Login() {
       setUserName(result.user.displayName || result.user.email)
       setSuccess(true)
     } catch (e) {
-      setErr(e.message.includes('popup-closed') ? 'Popup closed. Please try again.' : 'Google sign-in failed. Try again.')
+      if (e.code === 'auth/popup-closed-by-user') {
+        setErr('Popup closed. Please try again.')
+      } else if (e.code === 'auth/cancelled-popup-request') {
+        setErr('Sign in cancelled. Please try again.')
+      } else {
+        setErr('Google sign-in failed. Please try again.')
+      }
     } finally { setLoading(false) }
-  }
-
-  async function handleSendOtp() {
-    setErr('')
-    const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.length !== 10) { setErr('Enter a valid 10-digit mobile number.'); return }
-    setLoading(true)
-    try {
-      await setupRecaptcha()
-      const confirmation = await signInWithPhoneNumber(auth, `+91${cleaned}`, recaptchaRef.current)
-      confirmationRef.current = confirmation
-      setOtpSent(true); setCountdown(30)
-      setOtp(['', '', '', '', '', ''])
-      setTimeout(() => otpRefs.current[0]?.focus(), 100)
-    } catch (e) {
-      setErr('Failed to send OTP. Check the number and try again.')
-      recaptchaRef.current = null
-    } finally { setLoading(false) }
-  }
-
-  async function handleVerifyOtp() {
-    const entered = otp.join('')
-    if (entered.length < 6) { setErr('Enter all 6 digits.'); return }
-    setLoading(true)
-    try {
-      const result = await confirmationRef.current.confirm(entered)
-      setUserName(result.user.phoneNumber)
-      setSuccess(true)
-    } catch {
-      setErr('Incorrect OTP. Please try again.')
-      setOtp(['', '', '', '', '', ''])
-      otpRefs.current[0]?.focus()
-    } finally { setLoading(false) }
-  }
-
-  function handleOtpChange(i, val) {
-    if (!/^\d?$/.test(val)) return
-    const next = [...otp]; next[i] = val; setOtp(next); setErr('')
-    if (val && i < 5) otpRefs.current[i + 1]?.focus()
-  }
-
-  function handleOtpKeyDown(i, e) {
-    if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus()
-  }
-
-  function handleOtpPaste(e) {
-    e.preventDefault()
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    const next = ['', '', '', '', '', '']
-    pasted.split('').forEach((ch, i) => { next[i] = ch })
-    setOtp(next); otpRefs.current[Math.min(pasted.length, 5)]?.focus()
-  }
-
-  function handleChangeNumber() {
-    setOtpSent(false); setOtp(['', '', '', '', '', '']); setErr(''); recaptchaRef.current = null
   }
 
   return (
     <>
       <style>{STYLES}</style>
       <div className="login-root">
+
+        {/* Left brand panel */}
         <div className="login-brand">
           <div className="brand-logo"><span>V</span> Vidya Course</div>
           <h2 className="brand-tagline">Learn with confidence,<br />every single day.</h2>
-          <p className="brand-sub">Personal home tuition for Class 1–6 students in Shakarpur and Laxmi Nagar. Hindi & English medium. All subjects covered.</p>
+          <p className="brand-sub">
+            Personal home tuition for Class 1–6 in Shakarpur and Laxmi Nagar. Hindi & English medium. All subjects covered.
+          </p>
           <div className="brand-chips">
             <span className="brand-chip">Class 1–6</span>
             <span className="brand-chip">Mon–Fri</span>
@@ -201,6 +103,7 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Right form panel */}
         <div className="login-form-panel">
           <div className="form-box">
             <div className="form-logo">
@@ -212,7 +115,7 @@ export default function Login() {
               <div className="success-box">
                 <div className="success-icon">🎉</div>
                 <h3>Welcome{userName ? `, ${userName.split(' ')[0]}` : ''}!</h3>
-                <p>You're signed in. Taking you to Vidya Course now…</p>
+                <p>You're signed in successfully. Taking you to Vidya Course now…</p>
                 <div className="redirect-bar">
                   <div className="redirect-fill" style={{ width: `${progress}%` }} />
                 </div>
@@ -220,100 +123,36 @@ export default function Login() {
               </div>
             ) : (
               <>
-                <h1 className="form-heading">Sign in</h1>
-                <p className="form-sub">Access your tuition dashboard</p>
-                <div className="tabs">
-                  <button className={`tab ${tab === 'google' ? 'active' : ''}`} onClick={() => { setTab('google'); setErr('') }}>Google</button>
-                  <button className={`tab ${tab === 'phone' ? 'active' : ''}`} onClick={() => { setTab('phone'); setErr('') }}>Phone OTP</button>
+                <h1 className="form-heading">Welcome back</h1>
+                <p className="form-sub">Sign in to access your tuition dashboard</p>
+
+                <button className="btn-google" onClick={handleGoogleLogin} disabled={loading}>
+                  <svg className="google-icon" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  {loading ? 'Signing in…' : 'Continue with Google'}
+                </button>
+
+                {err && <p className="err">{err}</p>}
+
+                <div className="divider">what you get</div>
+
+                <div className="features">
+                  <div className="feature"><div className="feature-icon">📚</div> Access all subjects — Hindi, English, Maths & more</div>
+                  <div className="feature"><div className="feature-icon">📝</div> Weekly test results and progress tracking</div>
+                  <div className="feature"><div className="feature-icon">🏠</div> Home tuition slots for Class 1–6</div>
+                  <div className="feature"><div className="feature-icon">💬</div> Direct enquiry to Pawan Gupta</div>
                 </div>
-
-                {tab === 'google' && (
-                  <>
-                    <button className="btn-google" onClick={handleGoogleLogin} disabled={loading}>
-                      <svg className="google-icon" viewBox="0 0 24 24">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                      </svg>
-                      {loading ? 'Signing in…' : 'Continue with Google'}
-                    </button>
-                    {err && <p className="err">{err}</p>}
-                    <div className="divider">or use phone OTP</div>
-                    <button className="btn-google" onClick={() => setTab('phone')}>Sign in with phone instead</button>
-                  </>
-                )}
-
-                {tab === 'phone' && (
-                  <>
-                    <div className="field">
-                      <label htmlFor="phone">Mobile number</label>
-                      <div className="field-row">
-                        <span className="field-prefix">+91</span>
-                        <input
-                          id="phone" type="tel" inputMode="numeric" maxLength={10}
-                          className={`with-prefix${err && !otpSent ? ' error-input' : ''}`}
-                          value={phone}
-                          onChange={e => { setPhone(e.target.value.replace(/\D/g, '')); setErr('') }}
-                          placeholder="9876543210" disabled={otpSent}
-                        />
-                        <button className="btn-send-otp"
-                          onClick={otpSent ? handleChangeNumber : handleSendOtp}
-                          disabled={loading || (otpSent && countdown > 0)}>
-                          {loading && !otpSent ? 'Sending…' : otpSent ? 'Change' : 'Send OTP'}
-                        </button>
-                      </div>
-                      {!otpSent && err && <p className="err">{err}</p>}
-                    </div>
-
-                    <div id="recaptcha-container"></div>
-
-                    {otpSent && (
-                      <>
-                        <div className="field">
-                          <label>Enter 6-digit OTP sent to +91 {phone}</label>
-                          <div className="otp-boxes" onPaste={handleOtpPaste}>
-                            {otp.map((d, i) => (
-                              <input key={i} ref={el => otpRefs.current[i] = el}
-                                className="otp-box" type="text" inputMode="numeric" maxLength={1}
-                                value={d} onChange={e => handleOtpChange(i, e.target.value)}
-                                onKeyDown={e => handleOtpKeyDown(i, e)} />
-                            ))}
-                          </div>
-                          <p className="info">
-                            {countdown > 0 ? `Resend OTP in ${countdown}s` :
-                              <button style={{ background: 'none', border: 'none', color: '#1B2A6B', fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem', padding: 0, fontFamily: 'inherit' }} onClick={handleSendOtp}>Resend OTP</button>}
-                          </p>
-                          {err && <p className="err">{err}</p>}
-                        </div>
-                        <button className="btn-primary" onClick={handleVerifyOtp} disabled={loading || otp.join('').length < 6}>
-                          {loading ? 'Verifying…' : 'Verify & Sign in'}
-                        </button>
-                      </>
-                    )}
-
-                    {!otpSent && (
-                      <>
-                        <button className="btn-primary" onClick={handleSendOtp} disabled={loading}>
-                          {loading ? 'Sending OTP…' : 'Send OTP'}
-                        </button>
-                        <div className="divider" style={{ marginTop: 20 }}>or</div>
-                        <button className="btn-google" onClick={() => setTab('google')}>
-                          <svg className="google-icon" viewBox="0 0 24 24">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                          </svg>
-                          Continue with Google instead
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
               </>
             )}
-            <p className="footer-note">By signing in you agree to our terms of service.<br />Vidya Course · Shakarpur, Laxmi Nagar</p>
+
+            <p className="footer-note">
+              By signing in you agree to our terms of service.<br />
+              Vidya Course · Shakarpur, Laxmi Nagar · pg19062004@gmail.com
+            </p>
           </div>
         </div>
       </div>
