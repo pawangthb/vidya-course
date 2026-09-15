@@ -10,6 +10,7 @@ const SERVICES = [
   ['Expert tuition', 'Hindi and English medium, all subjects.'],
   ['Weekly test & analysis', 'Regular tests so progress is visible.'],
   ['Homework help', 'Daily assistance so classwork stays on track.'],
+  ['Free trial for new students', 'Try a class before committing to a slot.'],
 ]
 
 const SUBJECTS = ['All subjects', 'Hindi', 'English', 'Maths', 'EVS / Science', 'SST', 'Computer']
